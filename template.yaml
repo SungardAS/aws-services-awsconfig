@@ -1,0 +1,117 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: API Interfaces and corresponding Lambda Functions for awsconfig.
+Resources:
+  ApiGatewayApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      DefinitionUri: ./swagger.yaml
+      StageName: Prod
+      Variables:
+        LambdaFunctionName: !Ref LambdaFunction
+  LambdaFunctionIAMRole:
+      Type: "AWS::IAM::Role"
+      Properties:
+          Path: "/"
+          AssumeRolePolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Sid: "AllowLambdaServiceToAssumeRole"
+                Effect: "Allow"
+                Action:
+                  - "sts:AssumeRole"
+                Principal:
+                  Service:
+                    - "lambda.amazonaws.com"
+          Policies:
+            -
+              PolicyName: "InlinePolicy"
+              PolicyDocument:
+                Version: "2012-10-17"
+                Statement:
+                  -
+                    Effect: "Allow"
+                    Action:
+                      - "config:*"
+                      - "iam:*"
+                      - "lambda:*"
+                      - "sns:Create*"
+                      - "sns:Publish*"
+                      - "sns:Get*"
+                      - "sns:List*"
+                      - "sns:Delete*"
+                      - "sns:Subscribe*"
+                      - "tag:Get*"
+                    Resource: "*"
+                  -
+                    Effect: "Allow"
+                    Action:
+                      - "logs:CreateLogGroup"
+                      - "logs:CreateLogStream"
+                      - "logs:PutLogEvents"
+                    Resource: "arn:aws:logs:*:*:*"
+                  -
+                    Effect: "Allow"
+                    Action:
+                      - "s3:PutObject*"
+                    Resource: "arn:aws:s3:::*.awsconfig/AWSLogs/*/*"
+                    Condition:
+                      StringLike:
+                        s3:x-amz-acl: "bucket-owner-full-control"
+                  -
+                    Effect: "Allow"
+                    Action:
+                      - "s3:GetBucketAcl"
+                    Resource: "arn:aws:s3:::*.awsconfig"
+                  -
+                    Effect: "Allow"
+                    Action:
+                      - "s3:ListAllMyBuckets"
+                      - "s3:CreateBucket"
+                    Resource: "*"
+                  -
+                    Effect: "Allow"
+                    Action:
+                      - "sns:AddPermission"
+                    Resource: "arn:aws:sns:*:*:awsconfig-topic"
+  LambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: SungardAS-AWSConfig
+      Handler: index.handler
+      Runtime: nodejs4.3
+      CodeUri: ./src
+      Role: !GetAtt LambdaFunctionIAMRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          BUCKET_NAME_POSTFIX: ".awsconfig"
+          TOPIC_NAME: "awsconfig-topic"
+          ASSUME_ROLE_POLICY_NAME: "awsconfig_assume_role_policy"
+          ROLE_NAME: "awsconfig-setup-role"
+          INLINE_POLICY_NAME: "awsconfig_setup_policy"
+          ROLE_POLICY_ARN: "arn:aws:iam::aws:policy/service-role/AWSConfigRole"
+          DELIVERY_CHANNEL_NAME: "default"
+          CONFIG_RECORDER_NAME: "default"
+      Events:
+        GetResource:
+          Type: Api
+          Properties:
+            RestApiId: !Ref ApiGatewayApi
+            Path: /{proxy+}
+            Method: ANY
+
+Outputs:
+  APIURL:
+    Description: "URL of your API endpoint"
+    Value: !Join
+      - ''
+      - - https://
+        - !Ref ApiGatewayApi
+        - '.execute-api.'
+        - !Ref 'AWS::Region'
+        - '.amazonaws.com/Prod'
+  LambdaFunctionArn:
+    Description: "Lambda Function ARN"
+    Value: !GetAtt LambdaFunction.Arn
