@@ -114,7 +114,8 @@ baseHandler.post = function(params, callback) {
     {func:aws_role.findInlinePolicy, success:aws_role.deleteInlinePolicy, failure:aws_role.createInlinePolicy, error:errored},
     {func:aws_role.deleteInlinePolicy, success:aws_role.createInlinePolicy, failure:failed, error:errored},
     {func:aws_role.createInlinePolicy, success:aws_role.attachPolicy, failure:failed, error:errored},
-    {func:aws_role.attachPolicy, success:aws_bucket.findBucket, failure:failed, error:errored},
+    {func:aws_role.attachPolicy, success:aws_role.wait, failure:failed, error:errored},
+    {func:aws_role.wait, success:aws_bucket.findBucket, failure:failed, error:errored},
     {func:aws_bucket.findBucket, success:aws_topic.findTopic, failure:aws_bucket.createBucket, error:errored},
     {func:aws_bucket.createBucket, success:aws_topic.findTopic, failure:failed, error:errored},
     {func:aws_topic.findTopic, success:aws_config.findRecorders, failure:aws_topic.createTopic, error:errored},
@@ -134,6 +135,7 @@ baseHandler.post = function(params, callback) {
 
   flows[0].func(input);
 };
+
 
 baseHandler.delete = function(params, callback) {
 
