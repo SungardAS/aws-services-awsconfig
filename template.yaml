@@ -80,7 +80,7 @@ Resources:
     Properties:
       FunctionName: SungardAS-AWSConfig
       Handler: index.handler
-      Runtime: nodejs4.3
+      Runtime: nodejs8.10
       CodeUri: ./src
       Role: !GetAtt LambdaFunctionIAMRole.Arn
       Timeout: 300
